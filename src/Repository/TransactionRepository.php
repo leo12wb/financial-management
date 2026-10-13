@@ -91,8 +91,12 @@ class TransactionRepository extends ServiceEntityRepository
                ->setParameter('source', $filters['source']);
         }
 
+        // Clone the query but reset ORDER BY — PostgreSQL rejects aggregate
+        // (COUNT) combined with ORDER BY on non-aggregated columns without GROUP BY.
         $countQb = clone $qb;
-        $total   = (int) $countQb->select('COUNT(t.id)')
+        $total   = (int) $countQb
+            ->select('COUNT(t.id)')
+            ->resetDQLPart('orderBy')
             ->getQuery()
             ->getSingleScalarResult();
 

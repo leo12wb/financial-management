@@ -38,6 +38,7 @@ class ReconciliationRepository extends ServiceEntityRepository
 
         $countQb = clone $qb;
         $total   = (int) $countQb->select('COUNT(r.id)')
+            ->resetDQLPart('orderBy')
             ->getQuery()
             ->getSingleScalarResult();
 

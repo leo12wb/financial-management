@@ -1,7 +1,5 @@
-
+# Local development overrides — auto-merged with compose.yaml
 services:
-###> doctrine/doctrine-bundle ###
-  database:
+  db:
     ports:
-      - "5432"
-###< doctrine/doctrine-bundle ###
+      - "${POSTGRES_PORT:-5432}:5432"

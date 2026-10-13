@@ -34,6 +34,7 @@ class ImportedStatementRepository extends ServiceEntityRepository
 
         $countQb = clone $qb;
         $total   = (int) $countQb->select('COUNT(s.id)')
+            ->resetDQLPart('orderBy')
             ->getQuery()
             ->getSingleScalarResult();
 

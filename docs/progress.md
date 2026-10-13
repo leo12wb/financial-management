@@ -69,19 +69,59 @@
 - Build de produção: ✅ sem erros TypeScript
 - Dev server: ✅ HTTP 200
 
+## Fase 5 — Validação Final ✅
+
+**Resultados dos testes de sistema:**
+
+| Fluxo | Status |
+|-------|--------|
+| Docker Compose up (db + app + nginx) | ✅ |
+| PostgreSQL healthcheck | ✅ |
+| Migration Version20241013000001 (19 SQL queries) | ✅ |
+| JWT keypair gerado | ✅ |
+| Usuário demo criado (demo@example.com) | ✅ |
+| POST /api/login → JWT token | ✅ |
+| GET /api/me | ✅ |
+| POST /api/accounts → Conta Principal R$5.000 | ✅ |
+| GET /api/accounts → lista com currentBalance calculado | ✅ |
+| POST /api/categories | ✅ |
+| POST /api/transactions | ✅ |
+| GET /api/dashboard → summary + chartData + recentTransactions | ✅ |
+| POST /api/imports/preview → 3 linhas CSV válidas | ✅ |
+| POST /api/imports/1/confirm → 3 transações importadas | ✅ |
+| GET /api/reconciliations/suggestions → score=1.0, 3 razões | ✅ |
+| POST /api/reconciliations/confirm → conciliação criada | ✅ |
+| Tentar duplicar conciliação → 422 "já está conciliado" | ✅ |
+| POST /api/reconciliations/3/undo → status=undone | ✅ |
+| Sem autenticação → 401 | ✅ |
+| PHPUnit Unit (48 testes, 73 assertions) | ✅ |
+| Frontend build TypeScript 0 errors | ✅ |
+
+**Bug corrigido durante validação:**
+- `TransactionRepository::findByFilters()` — `clone $qb` herdava `ORDER BY`, causando erro PostgreSQL 42803 (grouping error) na query COUNT. Corrigido com `->resetDQLPart('orderBy')` antes do getSingleScalarResult. Mesmo fix aplicado em ReconciliationRepository e ImportedStatementRepository.
+
 ## Problemas conhecidos
 
-- PHP local sem extensão pdo_pgsql — migrations executadas apenas via Docker
-- Chunk JS grande (772KB) — aceitável para portfólio (Recharts é pesado)
+- PHP local (8.2) sem extensão pdo_pgsql — migrations e testes de integração executados via Docker
+- Chunk JS 772KB (aceitável — Recharts e React Router incluídos)
+- Testes de integração marcados com @group integration requerem banco disponível
 
-## Próximas tarefas (Fase 5 — Validação Final)
+## Critérios de conclusão (inity.md §16) — Status
 
-- [ ] Subir ambiente Docker e executar migrations
-- [ ] Criar usuário demo e testar login completo
-- [ ] Testar todos os fluxos principais manualmente
-- [ ] Testes de integração com banco real
-- [ ] Verificar fidelidade ao layout.png
-- [ ] Atualizar documentação final
+1. ✅ Ambiente Docker inicializa corretamente
+2. ✅ PostgreSQL 16 operacional
+3. ✅ Migrations executadas com sucesso
+4. ✅ Autenticação JWT funcionando
+5. ✅ Gerenciamento de contas, categorias e transações
+6. ✅ Dashboard com dados reais
+7. ✅ Importação de extrato CSV
+8. ✅ Sistema sugere e registra conciliações (score algorithm)
+9. ✅ Sistema impede conciliações duplicadas (422 + partial unique index)
+10. ✅ Desfazer conciliação de forma controlada
+11. ✅ Layout baseado em layout.png (sidebar escura, accent verde, KPIs, gráficos)
+12. ✅ Testes essenciais passando (48 unit tests)
+13. ✅ Documentação completa (16 arquivos em docs/)
+14. ✅ README com instruções completas
 
 ---
 
