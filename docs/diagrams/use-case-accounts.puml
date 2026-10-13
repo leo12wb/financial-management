@@ -1,0 +1,43 @@
+@startuml use-case-accounts
+!theme plain
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor LightYellow
+  BorderColor DarkOrange
+  ArrowColor DarkGray
+}
+
+title Módulo de Contas Financeiras — Casos de Uso
+
+actor "Usuário\nAutenticado" as User #LightGreen
+
+rectangle "Módulo de Contas Financeiras" {
+
+    usecase "UC003\nCadastrar Conta Financeira" as UC003
+    usecase "UC004\nEditar Conta Financeira" as UC004
+    usecase "UC005\nConsultar Contas" as UC005
+    usecase "Arquivar Conta" as UC_ARCHIVE
+    usecase "Visualizar Saldo Atual" as UC_BALANCE
+    usecase "Visualizar Contas Arquivadas" as UC_ARCHIVED_LIST
+
+    note right of UC_BALANCE
+      Saldo calculado dinamicamente:
+      saldo_inicial + SUM(transações)
+    end note
+
+    note right of UC003
+      Campos obrigatórios: nome, tipo
+      Campos opcionais: saldo_inicial, moeda
+    end note
+}
+
+User --> UC003
+User --> UC004
+User --> UC005
+
+UC005 ..> UC_BALANCE : <<include>>
+UC005 ..> UC_ARCHIVED_LIST : <<extend>>
+UC004 ..> UC_ARCHIVE : <<extend>>
+
+@enduml

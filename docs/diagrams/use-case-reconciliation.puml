@@ -1,0 +1,63 @@
+@startuml use-case-reconciliation
+!theme plain
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor LightYellow
+  BorderColor DarkOrange
+  ArrowColor DarkGray
+}
+
+title Módulo de Conciliação Financeira — Casos de Uso
+
+actor "Usuário\nAutenticado" as User #LightGreen
+
+rectangle "Módulo de Conciliação Financeira" {
+
+    usecase "UC011\nConsultar Sugestões\nde Conciliação" as UC011
+    usecase "UC012\nConfirmar Conciliação" as UC012
+    usecase "UC013\nRejeitar Sugestão\nde Conciliação" as UC013
+    usecase "UC014\nDesfazer Conciliação" as UC014
+
+    usecase "Selecionar Conta\npara Conciliar" as UC_SELECT
+    usecase "Ajustar Tolerância\nde Data" as UC_TOLERANCE
+    usecase "Visualizar Score\nde Confiança" as UC_SCORE
+    usecase "Conciliar\nManualmente" as UC_MANUAL
+    usecase "Marcar Entry\ncomo Ignorado" as UC_IGNORE
+    usecase "Manter Entry\ncomo Pendente" as UC_KEEP_PENDING
+    usecase "Consultar Histórico\nde Conciliações" as UC_HISTORY
+
+    note right of UC011
+      Critérios de match:
+      - Mesma conta (obrigatório)
+      - Mesmo valor e tipo
+      - Data próxima (tolerância configurável)
+      - Similaridade de descrição (auxiliar)
+    end note
+
+    note right of UC014
+      Operação de registro:
+      Reconciliation.undone_at = NOW()
+      Não deleta — preserva histórico
+    end note
+}
+
+User --> UC011
+User --> UC012
+User --> UC013
+User --> UC014
+User --> UC_HISTORY
+
+UC011 ..> UC_SELECT : <<include>>
+UC011 ..> UC_SCORE : <<include>>
+UC011 ..> UC_TOLERANCE : <<extend>>
+
+UC012 ..> UC011 : <<extend>>
+UC012 ..> UC_MANUAL : <<extend>>
+
+UC013 ..> UC_IGNORE : <<extend>>
+UC013 ..> UC_KEEP_PENDING : <<extend>>
+
+UC014 ..> UC_HISTORY : <<extend>>
+
+@enduml

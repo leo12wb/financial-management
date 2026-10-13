@@ -1,0 +1,96 @@
+flowchart TD
+    Start([Início]) --> SelectAccount
+
+    SelectAccount["1. Usuário seleciona\na conta de destino"]
+    SelectAccount --> UploadFile
+
+    UploadFile["2. Usuário faz upload\ndo arquivo CSV\n(drag & drop ou seleção)"]
+    UploadFile --> ValidateFormat
+
+    ValidateFormat{"3. Validar formato\ndo arquivo\n- É CSV?\n- Tem conteúdo?"}
+
+    ValidateFormat -- "Inválido\n(não é CSV,\narquivo vazio)" --> ReturnFormatError
+
+    ReturnFormatError["Retornar erro:\nHTTP 400\n'O arquivo deve ser\nCSV e não pode\nestar vazio.'"]
+    ReturnFormatError --> UploadFile
+
+    ValidateFormat -- Válido --> ValidateColumns
+
+    ValidateColumns{"4. Validar colunas\nobrigatórias\n- date\n- description\n- amount\n- type"}
+
+    ValidateColumns -- "Colunas\nausentes" --> ReturnColumnError
+
+    ReturnColumnError["Retornar erro:\nHTTP 422\nLista de colunas\nfaltantes"]
+    ReturnColumnError --> UploadFile
+
+    ValidateColumns -- "Colunas OK" --> ParseRows
+
+    ParseRows["5. Processar cada linha:\n- Validar formato de data\n- Validar valor numérico\n- Validar tipo (credit/debit)\n- Identificar erros por linha"]
+    ParseRows --> DetectDuplicates
+
+    DetectDuplicates["6. Detectar duplicatas:\nConsultar banco por\n(account_id, external_reference)\nMarcar como 'duplicate'\nse já existir"]
+    DetectDuplicates --> GeneratePreview
+
+    GeneratePreview["7. Gerar preview:\n- Resumo: total, válidos,\n  duplicatas, erros\n- Tabela com status\n  por linha (new/duplicate/error)"]
+    GeneratePreview --> DisplayPreview
+
+    DisplayPreview["8. Exibir preview\npara o usuário:\n- Registros novos (verde)\n- Duplicatas (amarelo)\n- Erros (vermelho)"]
+
+    DisplayPreview --> UserDecision
+
+    UserDecision{"9. Usuário analisa\no preview"}
+
+    UserDecision -- "Cancelar" --> DiscardImport
+
+    DiscardImport["Descartar preview.\nNenhum dado\npersistido."]
+    DiscardImport --> End
+
+    UserDecision -- "Confirmar\nImportação" --> CheckValidRows
+
+    CheckValidRows{"10. Há linhas\nválidas para\nimportar?"}
+
+    CheckValidRows -- "Nenhuma linha\nválida" --> NotifyNoRows
+
+    NotifyNoRows["Exibir aviso:\n'Nenhum registro novo\npara importar.'"]
+    NotifyNoRows --> UserDecision
+
+    CheckValidRows -- "Há linhas válidas" --> PersistRecords
+
+    PersistRecords["11. Persistir registros válidos:\n- Criar ImportedStatement\n  (status: confirmed)\n- Criar StatementEntry\n  para cada linha nova\n  (status: pending)\n- Ignorar duplicatas"]
+    PersistRecords --> UpdateCounts
+
+    UpdateCounts["12. Atualizar contadores\ndo ImportedStatement:\n- valid_entries\n- skipped_entries\n- total_entries"]
+    UpdateCounts --> GenerateReport
+
+    GenerateReport["13. Gerar relatório final:\n- Total importado\n- Total ignorado (duplicatas)\n- Total de erros\n- ID do ImportedStatement"]
+    GenerateReport --> DisplayResult
+
+    DisplayResult["14. Exibir resultado\npara o usuário:\n✅ X registros importados\n⚠️ Y duplicatas ignoradas\n❌ Z erros"]
+
+    DisplayResult --> NavigateReconciliation
+
+    NavigateReconciliation{"15. Próxima ação\ndo usuário"}
+
+    NavigateReconciliation -- "Ir para\nConciliação" --> StartReconciliation
+
+    NavigateReconciliation -- "Ver Histórico\nde Importações" --> ViewHistory
+
+    NavigateReconciliation -- "Importar\nnovo arquivo" --> SelectAccount
+
+    StartReconciliation["Redirecionar para\ntela de Conciliação\ncom a conta pré-selecionada"]
+    StartReconciliation --> End
+
+    ViewHistory["Redirecionar para\nHistórico de Importações"]
+    ViewHistory --> End
+
+    End([Fim])
+
+    style Start fill:#22c55e,color:#ffffff,stroke:#16a34a
+    style End fill:#22c55e,color:#ffffff,stroke:#16a34a
+    style ReturnFormatError fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    style ReturnColumnError fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    style DiscardImport fill:#f1f5f9,stroke:#94a3b8,color:#334155
+    style NotifyNoRows fill:#fef9c3,stroke:#eab308,color:#713f12
+    style PersistRecords fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style GenerateReport fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style DisplayResult fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f

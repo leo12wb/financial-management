@@ -1,0 +1,58 @@
+@startuml use-case-import
+!theme plain
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor LightYellow
+  BorderColor DarkOrange
+  ArrowColor DarkGray
+}
+
+title Módulo de Importação de Extrato — Casos de Uso
+
+actor "Usuário\nAutenticado" as User #LightGreen
+
+rectangle "Módulo de Importação de Extrato CSV" {
+
+    usecase "UC009\nImportar Extrato CSV" as UC009
+    usecase "UC010\nValidar Registros\nImportados" as UC010
+    usecase "UC015\nConsultar Histórico\nde Importação" as UC015
+
+    usecase "Selecionar Conta\nde Destino" as UC_SELECT_ACCOUNT
+    usecase "Fazer Upload\ndo Arquivo CSV" as UC_UPLOAD
+    usecase "Visualizar Preview\nde Importação" as UC_PREVIEW
+    usecase "Identificar Duplicatas\npor externalReference" as UC_DUPLICATES
+    usecase "Confirmar Importação" as UC_CONFIRM
+    usecase "Cancelar Importação" as UC_CANCEL
+    usecase "Visualizar Detalhes\nda Importação" as UC_DETAIL
+    usecase "Filtrar Entries\npor Status" as UC_FILTER_STATUS
+
+    note right of UC_DUPLICATES
+      Idempotência garantida por:
+      UNIQUE(account_id, external_reference)
+      WHERE external_reference IS NOT NULL
+    end note
+
+    note bottom of UC009
+      Formato CSV esperado:
+      date, description, amount,
+      type, external_reference
+    end note
+}
+
+User --> UC009
+User --> UC015
+
+UC009 ..> UC_SELECT_ACCOUNT : <<include>>
+UC009 ..> UC_UPLOAD : <<include>>
+UC009 ..> UC010 : <<include>>
+UC009 ..> UC_CONFIRM : <<extend>>
+UC009 ..> UC_CANCEL : <<extend>>
+
+UC010 ..> UC_PREVIEW : <<include>>
+UC010 ..> UC_DUPLICATES : <<include>>
+
+UC015 ..> UC_DETAIL : <<extend>>
+UC_DETAIL ..> UC_FILTER_STATUS : <<extend>>
+
+@enduml

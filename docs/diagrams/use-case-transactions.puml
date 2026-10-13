@@ -1,0 +1,53 @@
+@startuml use-case-transactions
+!theme plain
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor LightYellow
+  BorderColor DarkOrange
+  ArrowColor DarkGray
+}
+
+title Módulo de Transações — Casos de Uso
+
+actor "Usuário\nAutenticado" as User #LightGreen
+
+rectangle "Módulo de Transações Financeiras" {
+
+    usecase "UC006\nCadastrar Transação" as UC006
+    usecase "UC007\nConsultar e Filtrar\nTransações" as UC007
+    usecase "Editar Transação\n(status: pending)" as UC_EDIT
+    usecase "Desfazer Conciliação\npara Editar\n(status: reconciled)" as UC_UNDO_TO_EDIT
+    usecase "Filtrar por Conta" as UC_FILTER_ACC
+    usecase "Filtrar por Categoria" as UC_FILTER_CAT
+    usecase "Filtrar por Período" as UC_FILTER_DATE
+    usecase "Filtrar por Status\nde Conciliação" as UC_FILTER_STATUS
+    usecase "Pesquisar por Texto" as UC_SEARCH
+
+    note right of UC006
+      Campos obrigatórios:
+      conta, tipo, valor, data, descrição
+      Campos opcionais:
+      categoria, observações
+    end note
+
+    note bottom of UC_EDIT
+      Somente transações com
+      status "pending" podem
+      ser editadas diretamente
+    end note
+}
+
+User --> UC006
+User --> UC007
+User --> UC_EDIT
+
+UC_EDIT ..> UC_UNDO_TO_EDIT : <<extend>>\n[se status = reconciled]
+
+UC007 ..> UC_FILTER_ACC : <<extend>>
+UC007 ..> UC_FILTER_CAT : <<extend>>
+UC007 ..> UC_FILTER_DATE : <<extend>>
+UC007 ..> UC_FILTER_STATUS : <<extend>>
+UC007 ..> UC_SEARCH : <<extend>>
+
+@enduml

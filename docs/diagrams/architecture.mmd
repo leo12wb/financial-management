@@ -1,0 +1,86 @@
+graph TB
+    subgraph Browser["Browser"]
+        React["React 18 + TypeScript\n(Vite 5 Dev Server :5173)"]
+    end
+
+    subgraph Docker["Docker Environment"]
+        subgraph Frontend["Container: frontend"]
+            Vite["Vite Build Server\n:5173"]
+        end
+
+        subgraph App["Container: app (PHP-FPM)"]
+            subgraph Symfony["Symfony 7 Application"]
+                Router["Symfony Router\n(annotations / attributes)"]
+
+                subgraph Controllers["Controllers Layer"]
+                    AuthCtrl["AuthController\n/api/login\n/api/logout\n/api/me"]
+                    DashCtrl["DashboardController\n/api/dashboard"]
+                    AccCtrl["AccountController\n/api/accounts"]
+                    TxCtrl["TransactionController\n/api/transactions"]
+                    CatCtrl["CategoryController\n/api/categories"]
+                    ImpCtrl["ImportController\n/api/imports"]
+                    RecCtrl["ReconciliationController\n/api/reconciliations"]
+                end
+
+                subgraph Services["Service Layer (Business Logic)"]
+                    AuthSvc["AuthService"]
+                    DashSvc["DashboardService"]
+                    AccSvc["AccountService"]
+                    TxSvc["TransactionService"]
+                    CatSvc["CategoryService"]
+                    CsvSvc["CsvImportService"]
+                    RecSvc["ReconciliationService"]
+                end
+
+                subgraph Repos["Repository Layer (Data Access)"]
+                    UserRepo["UserRepository"]
+                    AccRepo["AccountRepository"]
+                    TxRepo["TransactionRepository"]
+                    CatRepo["CategoryRepository"]
+                    StmtRepo["ImportedStatementRepository"]
+                    EntryRepo["StatementEntryRepository"]
+                    RecRepo["ReconciliationRepository"]
+                end
+
+                subgraph Entities["Entity Layer (Domain)"]
+                    UserEnt["User"]
+                    AccEnt["Account"]
+                    TxEnt["Transaction"]
+                    CatEnt["Category"]
+                    StmtEnt["ImportedStatement"]
+                    EntryEnt["StatementEntry"]
+                    RecEnt["Reconciliation"]
+                end
+
+                Security["Symfony Security\n(Firewall + Session + Voters)"]
+                Validator["Symfony Validator\n(DTOs + Constraints)"]
+            end
+        end
+
+        subgraph Nginx["Container: nginx"]
+            NginxSrv["Nginx :8080\n(Reverse Proxy)"]
+        end
+
+        subgraph DB["Container: db"]
+            Postgres["PostgreSQL 16\n:5432"]
+        end
+    end
+
+    React -->|"HTTP JSON\n/api/*"| NginxSrv
+    NginxSrv -->|"Proxy /api/*"| App
+    Router --> Controllers
+    Controllers --> Security
+    Controllers --> Validator
+    Controllers --> Services
+    Services --> Repos
+    Repos --> Entities
+    Repos -->|"Doctrine ORM\nDQL / QueryBuilder"| Postgres
+
+    style Browser fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style Docker fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style Symfony fill:#fef3c7,stroke:#f59e0b,color:#78350f
+    style Controllers fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+    style Services fill:#fce7f3,stroke:#ec4899,color:#831843
+    style Repos fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    style Entities fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    style DB fill:#fef2f2,stroke:#ef4444,color:#7f1d1d

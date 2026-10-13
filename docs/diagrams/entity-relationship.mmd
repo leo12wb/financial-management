@@ -1,0 +1,95 @@
+erDiagram
+    USER {
+        int id PK
+        string name
+        string email
+        string password
+        json roles
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    ACCOUNT {
+        int id PK
+        int user_id FK
+        string name
+        string type
+        decimal initial_balance
+        char currency
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CATEGORY {
+        int id PK
+        int user_id FK
+        string name
+        string type
+        char color
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    TRANSACTION {
+        int id PK
+        int account_id FK
+        int category_id FK
+        string type
+        decimal amount
+        date date
+        string description
+        text notes
+        string status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    IMPORTED_STATEMENT {
+        int id PK
+        int account_id FK
+        int user_id FK
+        string filename
+        timestamptz imported_at
+        int total_entries
+        int valid_entries
+        int skipped_entries
+        string status
+        json error_log
+    }
+
+    STATEMENT_ENTRY {
+        int id PK
+        int imported_statement_id FK
+        int account_id FK
+        date date
+        string description
+        decimal amount
+        string type
+        string external_reference
+        string status
+        timestamptz created_at
+    }
+
+    RECONCILIATION {
+        int id PK
+        int transaction_id FK
+        int statement_entry_id FK
+        int reconciled_by FK
+        timestamptz reconciled_at
+        timestamptz undone_at
+        int undone_by FK
+        text notes
+    }
+
+    USER ||--o{ ACCOUNT : "possui"
+    USER ||--o{ CATEGORY : "possui"
+    USER ||--o{ IMPORTED_STATEMENT : "realiza"
+    ACCOUNT ||--o{ TRANSACTION : "contém"
+    ACCOUNT ||--o{ IMPORTED_STATEMENT : "referencia"
+    CATEGORY ||--o{ TRANSACTION : "classifica"
+    IMPORTED_STATEMENT ||--o{ STATEMENT_ENTRY : "contém"
+    ACCOUNT ||--o{ STATEMENT_ENTRY : "referencia"
+    TRANSACTION ||--o| RECONCILIATION : "conciliada em"
+    STATEMENT_ENTRY ||--o| RECONCILIATION : "conciliada em"
+    USER ||--o{ RECONCILIATION : "confirma"

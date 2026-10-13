@@ -1,0 +1,119 @@
+sequenceDiagram
+    autonumber
+
+    actor Usuario as Usuário
+    participant Browser
+    participant React as React Frontend
+    participant Controller as ReconciliationController
+    participant Service as ReconciliationService
+    participant Repo as ReconciliationRepository
+    participant TxRepo as TransactionRepository
+    participant EntryRepo as StatementEntryRepository
+    participant DB as PostgreSQL
+
+    Note over Usuario, DB: Fluxo: Confirmar Conciliação
+
+    Usuario ->> React: Clica em "Confirmar Conciliação"\n(transactionId: 42, statementEntryId: 108)
+
+    React ->> Browser: Exibe modal de confirmação\ncom dados da transação e do extrato
+
+    Usuario ->> React: Confirma a operação\n(adiciona observação opcional)
+
+    React ->> Controller: POST /api/reconciliations/confirm\n{ transactionId: 42, statementEntryId: 108, notes: "..." }
+
+    Note over Controller: Verifica autenticação via\ncookie de sessão
+
+    Controller ->> Service: confirmReconciliation(dto, user)
+
+    Service ->> TxRepo: findByIdAndUser(42, user)
+    TxRepo ->> DB: SELECT * FROM transactions\nWHERE id=42 AND account.user_id=user.id
+    DB -->> TxRepo: Transaction entity
+    TxRepo -->> Service: Transaction (status: pending)
+
+    Service ->> EntryRepo: findByIdAndUser(108, user)
+    EntryRepo ->> DB: SELECT * FROM statement_entries\nWHERE id=108 AND account.user_id=user.id
+    DB -->> EntryRepo: StatementEntry entity
+    EntryRepo -->> Service: StatementEntry (status: pending)
+
+    Service ->> Service: Verifica mesma conta:\ntransaction.account_id === entry.account_id
+
+    Service ->> Repo: findActiveByTransaction(transaction)
+    Repo ->> DB: SELECT * FROM reconciliations\nWHERE transaction_id=42\nAND undone_at IS NULL
+    DB -->> Repo: NULL (não há conciliação ativa)
+    Repo -->> Service: NULL (ok para prosseguir)
+
+    Service ->> Repo: findActiveByStatementEntry(statementEntry)
+    Repo ->> DB: SELECT * FROM reconciliations\nWHERE statement_entry_id=108\nAND undone_at IS NULL
+    DB -->> Repo: NULL (não há conciliação ativa)
+    Repo -->> Service: NULL (ok para prosseguir)
+
+    Note over Service, DB: Abre transação de banco de dados
+
+    Service ->> DB: BEGIN TRANSACTION
+
+    Service ->> Repo: createReconciliation(\n  transaction, statementEntry, user, notes\n)
+    Repo ->> DB: INSERT INTO reconciliations\n(transaction_id, statement_entry_id,\nreconciled_by, reconciled_at, notes)\nVALUES (42, 108, user.id, NOW(), ...)
+    DB -->> Repo: Reconciliation (id: 7)
+
+    Service ->> TxRepo: updateStatus(transaction, "reconciled")
+    TxRepo ->> DB: UPDATE transactions\nSET status='reconciled', updated_at=NOW()\nWHERE id=42
+    DB -->> TxRepo: OK
+
+    Service ->> EntryRepo: updateStatus(statementEntry, "reconciled")
+    EntryRepo ->> DB: UPDATE statement_entries\nSET status='reconciled'\nWHERE id=108
+    DB -->> EntryRepo: OK
+
+    Service ->> DB: COMMIT
+
+    DB -->> Service: Transação confirmada
+
+    Service -->> Controller: Reconciliation entity (id: 7)
+
+    Controller -->> React: HTTP 201 Created\n{\n  id: 7,\n  transactionId: 42,\n  statementEntryId: 108,\n  reconciledAt: "2024-03-15T14:00:00+00:00",\n  reconciledBy: { id: 1, name: "João" }\n}
+
+    React ->> React: Remove sugestão da lista\nAtualiza status das transações em cache\n(React Query invalidation)
+
+    React -->> Usuario: Exibe toast de sucesso:\n"Conciliação confirmada com sucesso!"
+
+    Note over Usuario, DB: Fluxo: Desfazer Conciliação
+
+    Usuario ->> React: Clica em "Desfazer Conciliação"\n(reconciliationId: 7)
+
+    React ->> Browser: Exibe modal de confirmação\ncom campo de motivo
+
+    Usuario ->> React: Informa motivo e confirma
+
+    React ->> Controller: POST /api/reconciliations/7/undo\n{ reason: "Valor divergente" }
+
+    Controller ->> Service: undoReconciliation(7, reason, user)
+
+    Service ->> Repo: findById(7)
+    Repo ->> DB: SELECT * FROM reconciliations WHERE id=7
+    DB -->> Repo: Reconciliation (undone_at: NULL)
+    Repo -->> Service: Reconciliation (ativa)
+
+    Note over Service, DB: Abre transação de banco de dados
+
+    Service ->> DB: BEGIN TRANSACTION
+
+    Service ->> Repo: markAsUndone(reconciliation, user, reason)
+    Repo ->> DB: UPDATE reconciliations\nSET undone_at=NOW(), undone_by=user.id,\nnotes=reason\nWHERE id=7
+    DB -->> Repo: OK
+
+    Service ->> TxRepo: updateStatus(transaction, "pending")
+    TxRepo ->> DB: UPDATE transactions\nSET status='pending', updated_at=NOW()\nWHERE id=42
+    DB -->> TxRepo: OK
+
+    Service ->> EntryRepo: updateStatus(statementEntry, "pending")
+    EntryRepo ->> DB: UPDATE statement_entries\nSET status='pending'\nWHERE id=108
+    DB -->> EntryRepo: OK
+
+    Service ->> DB: COMMIT
+
+    Service -->> Controller: Resultado do desfazimento
+
+    Controller -->> React: HTTP 200 OK\n{\n  id: 7,\n  undoneAt: "2024-03-16T09:00:00+00:00",\n  undoneBy: { id: 1 },\n  transactionStatus: "pending",\n  statementEntryStatus: "pending"\n}
+
+    React ->> React: Atualiza cache\nTransação volta para lista de pendentes
+
+    React -->> Usuario: Exibe toast:\n"Conciliação desfeita com sucesso."
