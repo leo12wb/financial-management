@@ -2,7 +2,8 @@
 
 ## Status Atual
 
-**Fase em andamento:** Fase 1 — Análise e Planejamento
+**Fase concluída:** Fase 4 — Frontend (React + TypeScript + Tailwind CSS)
+**Próxima fase:** Fase 5 — Validação Final
 **Última atualização:** 2026-10-13
 
 ---
@@ -11,18 +12,76 @@
 
 | Fase | Nome | Status |
 |---|---|---|
-| Fase 1 | Análise e Planejamento | Em andamento |
-| Fase 2 | Infraestrutura (Docker, Symfony, React/Vite) | Pendente |
-| Fase 3 | Backend — Entidades, Migrações e Repositórios | Pendente |
-| Fase 4 | Backend — Services e Controllers (CRUD) | Pendente |
-| Fase 5 | Backend — Importação CSV | Pendente |
-| Fase 6 | Backend — Conciliação | Pendente |
-| Fase 7 | Frontend — Estrutura, Rotas e Autenticação | Pendente |
-| Fase 8 | Frontend — Dashboard e Contas | Pendente |
-| Fase 9 | Frontend — Transações e Categorias | Pendente |
-| Fase 10 | Frontend — Importação e Conciliação | Pendente |
-| Fase 11 | Testes automatizados | Pendente |
-| Fase 12 | Revisão final e documentação | Pendente |
+| Fase 1 | Análise e Planejamento | ✅ Concluída |
+| Fase 2 | Infraestrutura (Docker, Symfony, React/Vite) | ✅ Concluída |
+| Fase 3 | Backend completo (Entities, Services, Controllers, Tests) | ✅ Concluída |
+| Fase 4 | Frontend completo (React + TypeScript + Tailwind CSS) | ✅ Concluída |
+| Fase 5 | Validação Final | Pendente |
+
+---
+
+## Fase 1 — Análise e Planejamento ✅
+
+- layout.png analisado (sidebar escura, accent verde #10b981, KPI cards, gráficos, tabelas)
+- docs/requirements.md criado (RF001-RF025, RNF001-RNF010)
+- docs/architecture.md criado
+- docs/database.md criado
+- docs/api.md criado com 24 endpoints
+- docs/use-cases.md criado (UC001-UC015)
+- docs/reconciliation-flow.md criado
+- Diagramas Mermaid e PlantUML criados (9 arquivos)
+
+## Fase 2 — Infraestrutura ✅
+
+- Symfony 7.2 skeleton instalado
+- React 19 + Vite + TypeScript + Tailwind CSS v4 configurados
+- Docker Compose: db (postgres:16), app (php-fpm), nginx, frontend
+- Dockerfile: php:8.2-fpm-alpine
+- .env.example sem credenciais reais
+- README.md completo
+
+## Fase 3 — Backend ✅
+
+- 7 Enums PHP 8.2
+- 7 Entities com Doctrine attributes (DECIMAL(15,2), TIMESTAMPTZ, enums)
+- Migration inicial completa (todas tabelas, indexes, partial unique constraints)
+- 6 Repositories com queries otimizadas
+- 7 DTOs com Symfony Validator constraints
+- 6 Services (Account, Category, Transaction, CsvImport, Reconciliation, Dashboard)
+- 6 Controllers com 24 endpoints JWT-protegidos
+- Comando app:create-demo-user
+- Testes PHPUnit: 48 tests, 73 assertions — **todos passando** ✅
+
+## Fase 4 — Frontend ✅
+
+- 8 API services (auth, accounts, categories, transactions, imports, reconciliations, dashboard)
+- 11 componentes UI (Button, Input, Select, Badge, Card, Modal, Loading, EmptyState, Pagination, DataTable, Toast)
+- AuthContext com JWT persistido no localStorage
+- Sidebar escura (slate-900) com ícones Lucide, NavLink ativo verde
+- 7 páginas completas e conectadas à API:
+  - LoginPage: validação, loading, redirect
+  - DashboardPage: 5 KPIs, BarChart receitas/despesas, PieChart categorias, tabela recentes
+  - AccountsPage: grid de cards, modal criar/editar, toggle ativo
+  - CategoriesPage: 2 colunas (receitas | despesas), CRUD modal
+  - TransactionsPage: 6 filtros, tabela paginada, guard conciliada
+  - ImportPage: stepper 3 etapas (upload → preview → resultado), histórico
+  - ReconciliationPage: sugestões com score, histórico com undo
+- Build de produção: ✅ sem erros TypeScript
+- Dev server: ✅ HTTP 200
+
+## Problemas conhecidos
+
+- PHP local sem extensão pdo_pgsql — migrations executadas apenas via Docker
+- Chunk JS grande (772KB) — aceitável para portfólio (Recharts é pesado)
+
+## Próximas tarefas (Fase 5 — Validação Final)
+
+- [ ] Subir ambiente Docker e executar migrations
+- [ ] Criar usuário demo e testar login completo
+- [ ] Testar todos os fluxos principais manualmente
+- [ ] Testes de integração com banco real
+- [ ] Verificar fidelidade ao layout.png
+- [ ] Atualizar documentação final
 
 ---
 
