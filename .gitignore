@@ -1,2 +1,42 @@
+# Project-specific — keep out of version control
 inity.md
 layout.png
+
+###> Symfony ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< Symfony ###
+
+###> JWT Keys ###
+/config/jwt/*.pem
+###< JWT Keys ###
+
+###> Node / React frontend ###
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env.local
+###< Node / React frontend ###
+
+###> Docker volumes ###
+/docker/postgres-data/
+###< Docker volumes ###
+
+###> IDEs ###
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+###< IDEs ###
+
+###> PHPUnit ###
+/phpunit.xml
+/.phpunit.cache/
+/.phpunit.result.cache
+###< PHPUnit ###
