@@ -54,7 +54,7 @@ class TransactionController extends AbstractApiController
         try {
             $result = $this->transactionService->list($user, $filters, $page, $limit);
 
-            return $this->json($result);
+            return $this->json(['data' => $result]);
         } catch (\Exception $e) {
             $this->logger->error('TransactionController::list error', ['exception' => $e]);
 

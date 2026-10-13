@@ -18,12 +18,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Redirect to login on 401
+// Unwrap { data: ... } envelope and redirect to login on 401
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // All backend endpoints return { data: <payload> }
+    // Unwrap so callers receive the payload directly via r.data
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      response.data = (response.data as { data: unknown }).data
+    }
+    return response
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
     return Promise.reject(error)

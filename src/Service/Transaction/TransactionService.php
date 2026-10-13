@@ -77,11 +77,11 @@ class TransactionService
         );
 
         return [
-            'data'  => $data,
-            'total' => $result['total'],
-            'page'  => $page,
-            'limit' => $limit,
-            'pages' => $limit > 0 ? (int) ceil($result['total'] / $limit) : 1,
+            'data'       => $data,
+            'total'      => $result['total'],
+            'page'       => $page,
+            'limit'      => $limit,
+            'totalPages' => $limit > 0 ? (int) ceil($result['total'] / $limit) : 1,
         ];
     }
 

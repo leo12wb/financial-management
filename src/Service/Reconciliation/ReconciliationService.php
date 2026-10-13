@@ -32,9 +32,9 @@ class ReconciliationService
      */
     public function getSuggestions(User $user, ?int $accountId = null): array
     {
-        // Fetch all pending statement entries for the user (filtered by account if given)
+        // Query 1: pending statement entries — eagerly load importedStatement + account
         $entriesQb = $this->em->createQueryBuilder()
-            ->select('e')
+            ->select('e', 's', 'a')
             ->from(StatementEntry::class, 'e')
             ->join('e.importedStatement', 's')
             ->join('s.account', 'a')
@@ -51,45 +51,58 @@ class ReconciliationService
         /** @var StatementEntry[] $pendingEntries */
         $pendingEntries = $entriesQb->getQuery()->getResult();
 
+        if (empty($pendingEntries)) {
+            return [];
+        }
+
+        // Query 2: ALL pending transactions for this user — eagerly load account
+        // This replaces the N inner queries (one per entry) with a single fetch
+        $txQb = $this->em->createQueryBuilder()
+            ->select('t', 'ta')
+            ->from(Transaction::class, 't')
+            ->join('t.account', 'ta')
+            ->andWhere('ta.user = :user')
+            ->andWhere('t.reconciliationStatus = :status')
+            ->setParameter('user', $user)
+            ->setParameter('status', ReconciliationStatus::Pending);
+
+        if ($accountId !== null) {
+            $txQb->andWhere('ta.id = :accountId')
+                 ->setParameter('accountId', $accountId);
+        }
+
+        /** @var Transaction[] $allPendingTx */
+        $allPendingTx = $txQb->getQuery()->getResult();
+
+        // Group transactions by account ID for O(1) lookup per entry
+        /** @var array<int, Transaction[]> $txByAccount */
+        $txByAccount = [];
+        foreach ($allPendingTx as $tx) {
+            $txByAccount[$tx->getAccount()->getId()][] = $tx;
+        }
+
         $suggestions = [];
 
         foreach ($pendingEntries as $entry) {
             $account     = $entry->getImportedStatement()->getAccount();
+            $accountTx   = $txByAccount[$account->getId()] ?? [];
             $entryDate   = $entry->getTransactionDate();
             $entryAmount = $entry->getAmount();
 
-            $dateFrom = (clone $entryDate)->modify('-3 days');
-            $dateTo   = (clone $entryDate)->modify('+3 days');
+            foreach ($accountTx as $transaction) {
+                // Filter: amount must match exactly
+                if (bccomp($transaction->getAmount(), $entryAmount, 2) !== 0) {
+                    continue;
+                }
 
-            /** @var Transaction[] $candidates */
-            $candidates = $this->em->createQueryBuilder()
-                ->select('t')
-                ->from(Transaction::class, 't')
-                ->andWhere('t.account = :account')
-                ->andWhere('t.amount = :amount')
-                ->andWhere('t.transactionDate >= :dateFrom')
-                ->andWhere('t.transactionDate <= :dateTo')
-                ->andWhere('t.reconciliationStatus = :status')
-                ->setParameter('account', $account)
-                ->setParameter('amount', $entryAmount)
-                ->setParameter('dateFrom', $dateFrom)
-                ->setParameter('dateTo', $dateTo)
-                ->setParameter('status', ReconciliationStatus::Pending)
-                ->getQuery()
-                ->getResult();
+                // Filter: date within 3 days
+                $diffDays = (int) abs($entryDate->diff($transaction->getTransactionDate())->days);
+                if ($diffDays > 3) {
+                    continue;
+                }
 
-            foreach ($candidates as $transaction) {
-                $score        = 0.0;
-                $matchReasons = [];
-
-                // Amount match (guaranteed by query filter, score base)
-                $score += 0.5;
-                $matchReasons[] = 'Valor igual';
-
-                // Date proximity
-                $diffDays = (int) abs(
-                    $entryDate->diff($transaction->getTransactionDate())->days
-                );
+                $score        = 0.5; // amount match guaranteed
+                $matchReasons = ['Valor igual'];
 
                 if ($diffDays === 0) {
                     $score += 0.3;
@@ -97,12 +110,11 @@ class ReconciliationService
                 } elseif ($diffDays <= 1) {
                     $score += 0.2;
                     $matchReasons[] = 'Data próxima (1 dia)';
-                } elseif ($diffDays <= 3) {
+                } else {
                     $score += 0.1;
                     $matchReasons[] = 'Data próxima (3 dias)';
                 }
 
-                // Description similarity
                 similar_text(
                     strtolower($entry->getDescription()),
                     strtolower($transaction->getDescription()),

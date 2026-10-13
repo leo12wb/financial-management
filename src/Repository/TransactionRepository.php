@@ -45,7 +45,9 @@ class TransactionRepository extends ServiceEntityRepository
         int $limit = 20
     ): array {
         $qb = $this->createQueryBuilder('t')
+            ->addSelect('a', 'c')
             ->join('t.account', 'a')
+            ->leftJoin('t.category', 'c')
             ->andWhere('a.user = :user')
             ->setParameter('user', $user)
             ->orderBy('t.transactionDate', 'DESC')
@@ -123,6 +125,92 @@ class TransactionRepository extends ServiceEntityRepository
             ->setParameter('user', $user)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Calculates the total balance across all active accounts of a user in 2 queries.
+     * Replaces the N+1 loop of calculateAccountBalance per account.
+     */
+    public function calculateTotalBalanceForUser(User $user): string
+    {
+        $em = $this->getEntityManager();
+
+        // Query 1: sum of initial balances for all active accounts of this user
+        $initialSumResult = $em->createQueryBuilder()
+            ->select('SUM(a.initialBalance)')
+            ->from(Account::class, 'a')
+            ->andWhere('a.user = :user')
+            ->andWhere('a.isActive = true')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $initialSum = $initialSumResult !== null ? (float) $initialSumResult : 0.0;
+
+        // Query 2: net transactions — CASE WHEN with ELSE 0 avoids NULL; no COALESCE wrapper
+        // needed (DQL rejects arithmetic between two COALESCE calls as a top-level SELECT expr)
+        $netResult = $em->createQueryBuilder()
+            ->select(
+                'SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END) - ' .
+                'SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END)'
+            )
+            ->from(Transaction::class, 't')
+            ->join('t.account', 'a')
+            ->andWhere('a.user = :user')
+            ->andWhere('a.isActive = true')
+            ->setParameter('user', $user)
+            ->setParameter('income', TransactionType::Income)
+            ->setParameter('expense', TransactionType::Expense)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return number_format($initialSum + (float) ($netResult ?? 0), 2, '.', '');
+    }
+
+    /**
+     * Returns map of account_id => currentBalance for the given accounts in a single GROUP BY query.
+     * Use this when serializing a list of accounts to avoid N+1.
+     *
+     * @param Account[] $accounts
+     * @return array<int, string>
+     */
+    public function calculateBalancesForAccounts(array $accounts): array
+    {
+        if (empty($accounts)) {
+            return [];
+        }
+
+        $rows = $this->getEntityManager()
+            ->createQueryBuilder()
+            ->select(
+                'IDENTITY(t.account) AS accountId, ' .
+                'SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END) - ' .
+                'SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END) AS net'
+            )
+            ->from(Transaction::class, 't')
+            ->andWhere('t.account IN (:accounts)')
+            ->setParameter('accounts', $accounts)
+            ->setParameter('income', TransactionType::Income)
+            ->setParameter('expense', TransactionType::Expense)
+            ->groupBy('t.account')
+            ->getQuery()
+            ->getResult();
+
+        $netByAccount = [];
+        foreach ($rows as $row) {
+            $netByAccount[(int) $row['accountId']] = (float) ($row['net'] ?? 0);
+        }
+
+        $result = [];
+        foreach ($accounts as $account) {
+            $net              = $netByAccount[$account->getId()] ?? 0.0;
+            $result[$account->getId()] = number_format(
+                (float) $account->getInitialBalance() + $net,
+                2, '.', ''
+            );
+        }
+
+        return $result;
     }
 
     /**

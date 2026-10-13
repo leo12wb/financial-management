@@ -7,14 +7,12 @@ namespace App\Service\Dashboard;
 use App\Entity\User;
 use App\Enum\ReconciliationStatus;
 use App\Enum\TransactionType;
-use App\Repository\AccountRepository;
 use App\Repository\TransactionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 class DashboardService
 {
     public function __construct(
-        private AccountRepository $accountRepository,
         private TransactionRepository $transactionRepository,
         private EntityManagerInterface $em,
     ) {}
@@ -24,14 +22,8 @@ class DashboardService
      */
     public function getSummary(User $user, string $dateFrom, string $dateTo): array
     {
-        // Total balance across all accounts
-        $accounts     = $this->accountRepository->findByUser($user, true);
-        $totalBalance = '0.00';
-
-        foreach ($accounts as $account) {
-            $balance      = $this->transactionRepository->calculateAccountBalance($account);
-            $totalBalance = number_format((float) $totalBalance + (float) $balance, 2, '.', '');
-        }
+        // Single aggregated query instead of N per-account balance queries
+        $totalBalance = $this->transactionRepository->calculateTotalBalanceForUser($user);
 
         // Income in period
         $incomeResult = $this->em->createQueryBuilder()
@@ -109,53 +101,49 @@ class DashboardService
      */
     public function getChartData(User $user, int $months = 6): array
     {
-        $result = [];
-
+        // Pre-build month slots so all months appear even when there are no transactions
+        $slots = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $monthStart = new \DateTime("first day of -{$i} month");
-            $monthEnd   = new \DateTime("last day of -{$i} month");
-
-            $monthStart->setTime(0, 0, 0);
-            $monthEnd->setTime(23, 59, 59);
-
-            $incomeResult = $this->em->createQueryBuilder()
-                ->select('SUM(t.amount)')
-                ->from('App\Entity\Transaction', 't')
-                ->join('t.account', 'a')
-                ->andWhere('a.user = :user')
-                ->andWhere('t.type = :type')
-                ->andWhere('t.transactionDate >= :start')
-                ->andWhere('t.transactionDate <= :end')
-                ->setParameter('user', $user)
-                ->setParameter('type', TransactionType::Income)
-                ->setParameter('start', $monthStart)
-                ->setParameter('end', $monthEnd)
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            $expenseResult = $this->em->createQueryBuilder()
-                ->select('SUM(t.amount)')
-                ->from('App\Entity\Transaction', 't')
-                ->join('t.account', 'a')
-                ->andWhere('a.user = :user')
-                ->andWhere('t.type = :type')
-                ->andWhere('t.transactionDate >= :start')
-                ->andWhere('t.transactionDate <= :end')
-                ->setParameter('user', $user)
-                ->setParameter('type', TransactionType::Expense)
-                ->setParameter('start', $monthStart)
-                ->setParameter('end', $monthEnd)
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            $result[] = [
-                'month'   => $monthStart->format('M/Y'),
-                'income'  => $incomeResult !== null ? round((float) $incomeResult, 2) : 0.0,
-                'expense' => $expenseResult !== null ? round((float) $expenseResult, 2) : 0.0,
-            ];
+            $d           = new \DateTime("first day of -{$i} month");
+            $key         = $d->format('Y-m');
+            $slots[$key] = ['month' => $d->format('M/Y'), 'income' => 0.0, 'expense' => 0.0];
         }
 
-        return $result;
+        $dateFrom = (new \DateTime("first day of -" . ($months - 1) . " month"))->setTime(0, 0, 0);
+        $dateTo   = (new \DateTime('last day of this month'))->setTime(23, 59, 59);
+
+        // Single GROUP BY query instead of 2 queries × N months
+        $rows = $this->em->getConnection()->fetchAllAssociative(
+            "SELECT TO_CHAR(t.transaction_date, 'YYYY-MM') AS ym,
+                    t.type,
+                    SUM(t.amount) AS total
+             FROM transactions t
+             JOIN accounts a ON t.account_id = a.id
+             WHERE a.user_id = :userId
+               AND t.transaction_date >= :dateFrom
+               AND t.transaction_date <= :dateTo
+             GROUP BY ym, t.type
+             ORDER BY ym ASC",
+            [
+                'userId'   => $user->getId(),
+                'dateFrom' => $dateFrom->format('Y-m-d H:i:s'),
+                'dateTo'   => $dateTo->format('Y-m-d H:i:s'),
+            ]
+        );
+
+        foreach ($rows as $row) {
+            $ym = $row['ym'];
+            if (!isset($slots[$ym])) {
+                continue;
+            }
+            if ($row['type'] === 'income') {
+                $slots[$ym]['income'] = round((float) $row['total'], 2);
+            } else {
+                $slots[$ym]['expense'] = round((float) $row['total'], 2);
+            }
+        }
+
+        return array_values($slots);
     }
 
     /**

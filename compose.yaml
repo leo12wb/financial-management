@@ -29,14 +29,18 @@ services:
     volumes:
       - .:/var/www/html
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      # Named volumes for vendor/ and var/ avoid Windows bind-mount overhead
+      - app_vendor:/var/www/html/vendor
+      - app_var:/var/www/html/var
     environment:
-      APP_ENV: ${APP_ENV:-dev}
+      APP_ENV: prod
       APP_SECRET: ${APP_SECRET:-change_me}
       DATABASE_URL: ${DATABASE_URL:-postgresql://financial_user:financial_pass@db:5432/financial_db?serverVersion=16&charset=utf8}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-%kernel.project_dir%/config/jwt/private.pem}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-%kernel.project_dir%/config/jwt/public.pem}
       JWT_PASSPHRASE: ${JWT_PASSPHRASE:-change_me_jwt_passphrase}
       CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-'^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'}
+      DEFAULT_URI: ${DEFAULT_URI:-http://localhost}
     depends_on:
       db:
         condition: service_healthy
@@ -75,6 +79,8 @@ services:
 
 volumes:
   postgres_data:
+  app_vendor:
+  app_var:
 
 networks:
   financial_net:

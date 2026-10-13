@@ -44,13 +44,13 @@ class ReconciliationController extends AbstractApiController
                 $result['data']
             );
 
-            return $this->json([
-                'data'  => $data,
-                'total' => $result['total'],
-                'page'  => $page,
-                'limit' => $limit,
-                'pages' => $limit > 0 ? (int) ceil($result['total'] / $limit) : 1,
-            ]);
+            return $this->json(['data' => [
+                'data'       => $data,
+                'total'      => $result['total'],
+                'page'       => $page,
+                'limit'      => $limit,
+                'totalPages' => $limit > 0 ? (int) ceil($result['total'] / $limit) : 1,
+            ]]);
         } catch (\Exception $e) {
             $this->logger->error('ReconciliationController::list error', ['exception' => $e]);
 

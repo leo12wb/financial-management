@@ -104,7 +104,7 @@ const historyColumns: Column<ImportedStatement>[] = [
   {
     key: 'account',
     header: 'Conta',
-    render: (row) => <span className="text-sm text-slate-600">{row.account.name}</span>,
+    render: (row) => <span className="text-sm text-slate-600">{row.accountName}</span>,
   },
   {
     key: 'createdAt',

@@ -30,9 +30,12 @@ class ReconciliationRepository extends ServiceEntityRepository
     public function findByUser(User $user, int $page = 1, int $limit = 20): array
     {
         $qb = $this->createQueryBuilder('r')
+            ->addSelect('t', 'ta', 'e', 'es')
             ->join('r.transaction', 't')
-            ->join('t.account', 'a')
-            ->andWhere('a.user = :user')
+            ->join('t.account', 'ta')
+            ->leftJoin('r.statementEntry', 'e')
+            ->leftJoin('e.importedStatement', 'es')
+            ->andWhere('ta.user = :user')
             ->setParameter('user', $user)
             ->orderBy('r.createdAt', 'DESC');
 

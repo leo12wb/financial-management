@@ -39,6 +39,9 @@ COPY . .
 # Generate JWT keypair directory
 RUN mkdir -p config/jwt
 
+# Warm up prod cache so the first request is fast
+RUN APP_ENV=prod php bin/console cache:warmup --no-debug || true
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/var \
     && chmod -R 775 /var/www/html/var

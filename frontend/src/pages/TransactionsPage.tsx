@@ -274,14 +274,14 @@ export default function TransactionsPage() {
     {
       key: 'account',
       header: 'Conta',
-      render: (row) => <span className="text-slate-600 text-sm">{row.account.name}</span>,
+      render: (row) => <span className="text-slate-600 text-sm">{row.accountName}</span>,
     },
     {
       key: 'category',
       header: 'Categoria',
       render: (row) =>
-        row.category ? (
-          <span className="text-slate-600 text-sm">{row.category.name}</span>
+        row.categoryName ? (
+          <span className="text-slate-600 text-sm">{row.categoryName}</span>
         ) : (
           <span className="text-slate-400">—</span>
         ),

@@ -32,21 +32,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(credentials: LoginCredentials): Promise<void> {
     const response = await authApi.login(credentials)
-    localStorage.setItem('token', response.token)
+    // token already stored inside authApi.login; persist user for page reloads
     localStorage.setItem('user', JSON.stringify(response.user))
     setUser(response.user)
   }
 
   async function logout(): Promise<void> {
-    try {
-      await authApi.logout()
-    } catch {
-      // ignore
-    } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      setUser(null)
-    }
+    authApi.logout()
+    localStorage.removeItem('user')
+    setUser(null)
   }
 
   return (

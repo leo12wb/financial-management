@@ -27,6 +27,7 @@ class ImportedStatementRepository extends ServiceEntityRepository
     public function findByUser(User $user, int $page = 1, int $limit = 20): array
     {
         $qb = $this->createQueryBuilder('s')
+            ->addSelect('a')
             ->join('s.account', 'a')
             ->andWhere('a.user = :user')
             ->setParameter('user', $user)

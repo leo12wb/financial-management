@@ -21,6 +21,13 @@ import {
   Legend,
 } from 'recharts'
 import type { DashboardData, Transaction } from '../types'
+
+// The dashboard endpoint returns a flat shape for recent transactions
+// (accountName / categoryName instead of nested objects)
+interface DashboardTransaction extends Omit<Transaction, 'account' | 'category'> {
+  accountName: string
+  categoryName: string | null
+}
 import { dashboardApi } from '../api/dashboardApi'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -59,7 +66,7 @@ function reconciliationBadge(status: Transaction['reconciliationStatus']) {
   return <Badge variant={variant}>{label}</Badge>
 }
 
-const transactionColumns: Column<Transaction>[] = [
+const transactionColumns: Column<DashboardTransaction>[] = [
   {
     key: 'date',
     header: 'Data',
@@ -76,14 +83,14 @@ const transactionColumns: Column<Transaction>[] = [
   {
     key: 'account',
     header: 'Conta',
-    render: (row) => <span className="text-slate-600">{row.account.name}</span>,
+    render: (row) => <span className="text-slate-600">{row.accountName}</span>,
   },
   {
     key: 'category',
     header: 'Categoria',
     render: (row) =>
-      row.category ? (
-        <span className="text-slate-600">{row.category.name}</span>
+      row.categoryName ? (
+        <span className="text-slate-600">{row.categoryName}</span>
       ) : (
         <span className="text-slate-400">—</span>
       ),
@@ -395,7 +402,7 @@ export default function DashboardPage() {
             ) : (
               <DataTable
                 columns={transactionColumns}
-                data={data.recentTransactions.slice(0, 10)}
+                data={data.recentTransactions.slice(0, 10) as unknown as DashboardTransaction[]}
                 rowKey={(row) => row.id}
                 className="mt-3"
               />

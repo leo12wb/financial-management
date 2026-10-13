@@ -1,11 +1,20 @@
 import api from './client'
-import type { AuthResponse, LoginCredentials } from '../types'
+import type { AuthResponse, LoginCredentials, User } from '../types'
 
 export const authApi = {
-  login(credentials: LoginCredentials): Promise<AuthResponse> {
-    return api.post<AuthResponse>('/auth/login', credentials).then((r) => r.data)
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    // POST /api/login returns only { token }
+    const { data } = await api.post<{ token: string }>('/login', credentials)
+    localStorage.setItem('token', data.token)
+
+    // Fetch user profile with the new token (interceptor unwraps { data: User } → User)
+    const { data: user } = await api.get<User>('/me')
+    return { token: data.token, user }
   },
   logout(): Promise<void> {
-    return api.post('/auth/logout').then(() => undefined)
+    // JWT is stateless — just clear client-side storage
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return Promise.resolve()
   },
 }

@@ -28,8 +28,11 @@ class AccountService
     {
         $accounts = $this->accountRepository->findByUser($user, $activeOnly);
 
+        // Single GROUP BY query for all balances instead of 1 query per account
+        $balances = $this->transactionRepository->calculateBalancesForAccounts($accounts);
+
         return array_map(
-            fn (Account $account): array => $this->serialize($account),
+            fn (Account $account): array => $this->serialize($account, $balances[$account->getId()] ?? null),
             $accounts
         );
     }
@@ -96,9 +99,11 @@ class AccountService
     /**
      * @return array<string, mixed>
      */
-    public function serialize(Account $account): array
+    public function serialize(Account $account, ?string $currentBalance = null): array
     {
-        $currentBalance = $this->transactionRepository->calculateAccountBalance($account);
+        if ($currentBalance === null) {
+            $currentBalance = $this->transactionRepository->calculateAccountBalance($account);
+        }
 
         return [
             'id'              => $account->getId(),
